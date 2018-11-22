@@ -587,5 +587,4 @@ class Dense_base_down0(nn.Module):
 
         x6=(self.dense_block6(x5))
         x6=(self.trans_block6(x6))
-
         return x6
