@@ -283,16 +283,14 @@ class vgg19ca(nn.Module):
     def __init__(self):
         super(vgg19ca, self).__init__()
 
-
-
-
         ############# 256-256  ##############
-        haze_class = models.vgg19_bn(pretrained=True)
-        self.feature = nn.Sequential(haze_class.features[0])
+        #haze_class = models.vgg19_bn(pretrained=True)
+        #self.feature = nn.Sequential(haze_class.features[0])
 
-        for i in range(1,3):
-            self.feature.add_module(str(i),haze_class.features[i])
-
+        #for i in range(1,3):
+        #    self.feature.add_module(str(i),haze_class.features[i])
+		self.conv1 = nn.conv2d(1,24,kernel_size=3,stride=1,padding=1)
+		self.conv61 = nn.Conv2d(24,64,kernel_size=3,stride=1,padding=1)
         self.conv16=nn.Conv2d(64, 24, kernel_size=3,stride=1,padding=1)  # 1mm
         self.dense_classifier=nn.Linear(127896, 512)
         self.dense_classifier1=nn.Linear(512, 4)
@@ -300,16 +298,15 @@ class vgg19ca(nn.Module):
 
     def forward(self, x):
 
-        feature=self.feature(x)
+        f1=self.conv1(x)
         # feature = Variable(feature.data, requires_grad=True)
-
-        feature=self.conv16(feature)
+        f1 = F.relu(f1, inplace=True)
+		f2 = self.conv61(f1)
+		f2 = F.relu(f2,inplace=True)
+        feature=self.conv16(f2)
         # print feature.size()
 
         # feature=Variable(feature.data,requires_grad=True)
-
-
-
         out = F.relu(feature, inplace=True)
         out = F.avg_pool2d(out, kernel_size=7).view(out.size(0), -1)
         # print out.size()
@@ -353,7 +350,6 @@ class Dense_rain4(nn.Module):
         self.conv_refin=nn.Conv2d(13,20,3,1,1)
 
         self.tanh=nn.Tanh()
-
 
         self.conv1010 = nn.Conv2d(20, 1, kernel_size=1,stride=1,padding=0)  # 1mm
         self.conv1020 = nn.Conv2d(20, 1, kernel_size=1,stride=1,padding=0)  # 1mm
@@ -427,25 +423,24 @@ class Dense_rain(nn.Module):
         super(Dense_rain, self).__init__()
 
         # self.conv_refin=nn.Conv2d(9,20,3,1,1)
-        self.conv_refin=nn.Conv2d(47,47,3,1,1)
+        self.conv_refin=nn.Conv2d(45,45,3,1,1)
 
         self.tanh=nn.Tanh()
 
 
-        self.conv1010 = nn.Conv2d(47, 2, kernel_size=1,stride=1,padding=0)  # 1mm
-        self.conv1020 = nn.Conv2d(47, 2, kernel_size=1,stride=1,padding=0)  # 1mm
-        self.conv1030 = nn.Conv2d(47, 2, kernel_size=1,stride=1,padding=0)  # 1mm
-        self.conv1040 = nn.Conv2d(47, 2, kernel_size=1,stride=1,padding=0)  # 1mm
+        self.conv1010 = nn.Conv2d(45, 2, kernel_size=1,stride=1,padding=0)  # 1mm
+        self.conv1020 = nn.Conv2d(45, 2, kernel_size=1,stride=1,padding=0)  # 1mm
+        self.conv1030 = nn.Conv2d(45, 2, kernel_size=1,stride=1,padding=0)  # 1mm
+        self.conv1040 = nn.Conv2d(45, 2, kernel_size=1,stride=1,padding=0)  # 1mm
 
-        self.refine3= nn.Conv2d(47+8, 3, kernel_size=3,stride=1,padding=1)
+        self.refine3= nn.Conv2d(45+8, 1, kernel_size=3,stride=1,padding=1)
 
-        self.refineclean1= nn.Conv2d(3, 8, kernel_size=7,stride=1,padding=3)
-        self.refineclean2= nn.Conv2d(8, 3, kernel_size=3,stride=1,padding=1)
+        self.refineclean1= nn.Conv2d(1, 4, kernel_size=7,stride=1,padding=3)
+        self.refineclean2= nn.Conv2d(4, 1, kernel_size=3,stride=1,padding=1)
 
         self.upsample = F.upsample_nearest
 
         self.relu=nn.LeakyReLU(0.2, inplace=True)
-
 
         self.batchnorm20=nn.BatchNorm2d(20)
         self.batchnorm1=nn.BatchNorm2d(1)
@@ -456,31 +451,17 @@ class Dense_rain(nn.Module):
 
     def forward(self, x, label_d):
         ## 256x256
-        label_d11 = torch.FloatTensor(1)
-        label_d11 = Variable(label_d11.cuda())
-        shape_out = x.data.size()
-        sizePatchGAN = shape_out[3]
-
-        # label_result=1
-        label_result=float(label_d.data.cpu().float().numpy())
-
-        label_d11.data.resize_((1, 1, sizePatchGAN, sizePatchGAN)).fill_(label_result)
-
-        x1=torch.cat([x,label_d11],1)
-
         x3=self.dense2(x)
         x2=self.dense1(x)
         x1=self.dense0(x)
 
-
         label_d11 = torch.FloatTensor(1)
         label_d11 = Variable(label_d11.cuda())
         shape_out = x3.data.size()
-        sizePatchGAN = shape_out[3]
+        sizePatchGAN = shape_out[2]
 
         # label_result=1
-        label_result=float(label_d.data.cpu().float().numpy())
-
+        label_result = float(label_d.data.cpu().float().numpy())
         label_d11.data.resize_((1, 8, sizePatchGAN, sizePatchGAN)).fill_(label_result)
 
         x8=torch.cat([x1,x,x2,x3,label_d11],1)
@@ -518,7 +499,7 @@ class Dense_base_down2(nn.Module):
     def __init__(self):
         super(Dense_base_down2, self).__init__()
 
-        self.dense_block1=BottleneckBlock2(3,13)
+        self.dense_block1=BottleneckBlock2(1,13)
         self.trans_block1=TransitionBlock1(16,8)
 
         ############# Block2-down 32-32  ##############
@@ -618,7 +599,7 @@ class Dense_base_down1(nn.Module):
     def __init__(self):
         super(Dense_base_down1, self).__init__()
 
-        self.dense_block1=BottleneckBlock1(3,13)
+        self.dense_block1=BottleneckBlock1(1,13)
         self.trans_block1=TransitionBlock1(16,8)
 
         ############# Block2-down 32-32  ##############
@@ -714,7 +695,7 @@ class Dense_base_down0(nn.Module):
     def __init__(self):
         super(Dense_base_down0, self).__init__()
 
-        self.dense_block1=BottleneckBlock(3,5)
+        self.dense_block1=BottleneckBlock(1,5)
         self.trans_block1=TransitionBlock1(8,4)
 
         ############# Block2-down 32-32  ##############
@@ -789,4 +770,3 @@ class Dense_base_down0(nn.Module):
 
 
         return x6
-
