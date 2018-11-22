@@ -222,7 +222,7 @@ for epoch in range(opt.niter):
 		print('[%d/%d][%d/%d] L_img: %f'
 		  % (epoch, opt.niter, i, len(dataloader), L_img.data[0]))
 		sys.stdout.flush()
-		trainLogger.write('%d\t%f\n' % \(i, L_img.data[0]))
+		trainLogger.write('%d\t%f\n' % (i, L_img.data[0]))
 		trainLogger.flush()
     if ganIterations % opt.evalIter == 0:
       val_batch_output = torch.FloatTensor(val_input.size()).fill_(0)
